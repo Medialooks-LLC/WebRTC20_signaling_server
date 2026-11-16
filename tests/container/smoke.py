@@ -39,7 +39,7 @@ def forbidden_context_path(name):
         return True
     if name.startswith(('webguest2/webguest2-src/build/', 'webguest2/webguest2/public/', 'signaling2.0/signaling2.0/config/', 'simple-auth/simple-auth/config/')):
         return True
-    if re.search(r'\.(pem|key|pfx|p12)$', leaf, re.I) or re.fullmatch(r'id_(rsa|dsa|ecdsa|ed25519)(\.pub)?', leaf):
+    if re.search(r'\.(pem|key|pfx|p12|ppk)$', leaf, re.I) or re.fullmatch(r'id_(rsa|dsa|ecdsa|ed25519)(\.pub)?', leaf):
         return True
     return bool(re.match(r'^\.env(?:\.|$)', leaf) and not re.search(r'\.(example|template)$', leaf))
 
@@ -115,7 +115,7 @@ def main():
             report['context'] = audit_context(args.image, name)
         audit = docker('run', '--rm', '-i', '--entrypoint', 'node', image_id, '--input-type=module', input_text=(HERE / 'image-audit.mjs').read_text(encoding='utf8'))
         report['imageAudit'] = parsed_output(audit)
-        command = ['run', '-d', '--name', name, '--label', 'codex.meet.validation=true', '-p', '127.0.0.1::8080']
+        command = ['run', '-d', '--name', name, '--label', 'codex.meet.validation=true', '--read-only', '--tmpfs', '/tmp:rw,nosuid,noexec,size=32m', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '-p', '127.0.0.1::8080']
         if args.tls_cert:
             command += ['-p', '127.0.0.1::8443', '--mount', 'type=bind,src=' + str(args.tls_cert.resolve()) + ',dst=/run/smoke-tls/cert.pem,readonly', '--mount', 'type=bind,src=' + str(args.tls_key.resolve()) + ',dst=/run/smoke-tls/key.pem,readonly', '-e', 'TLS_CERT_FILE=/run/smoke-tls/cert.pem', '-e', 'TLS_KEY_FILE=/run/smoke-tls/key.pem']
         docker(*command, image_id)
