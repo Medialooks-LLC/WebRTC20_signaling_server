@@ -1,0 +1,2 @@
+export const UI_SET_HAS_INTERNET = "UI_SET_HAS_INTERNET";
+export const UI_SET_HAS_WEB_RTC = "UI_SET_HAS_WEB_RTC";

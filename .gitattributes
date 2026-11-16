@@ -1,0 +1,11 @@
+# Keep Unix line endings for everything that runs inside the Linux containers,
+# even on Windows checkouts with core.autocrlf=true.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.ico binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.jpg binary
+*.gif binary

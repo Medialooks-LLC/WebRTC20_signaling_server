@@ -1,0 +1,31 @@
+@import "src/theme/scss/variables";
+
+.sound-settings {
+  z-index: 2;
+  width: auto;
+  padding: 19px !important;
+  align-self: flex-start !important;
+
+  .tooltip-title {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    text-transform: uppercase;
+  }
+
+  & > .tooltip-sound-content {
+    display: flex;
+    margin-top: 6px;
+    align-items: center;
+    flex-direction: row;
+
+    & > .tooltip-sound-value {
+      min-width: 32px;
+      max-width: 32px;
+    }
+
+    & > .tooltip-sound-slider {
+      width: 221px;
+    }
+  }
+}

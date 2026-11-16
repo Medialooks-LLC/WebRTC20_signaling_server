@@ -1,0 +1,15 @@
+/* Setup pages scroll as documents; the live video routes keep their viewport layout. */
+html.standalone-page { display: block; min-height: 100%; overflow-y: auto; }
+html.standalone-page body { display: block; overflow: visible; min-width: 0; }
+html.standalone-page #root { display: block; overflow: visible; min-width: 0; min-height: 100vh; min-height: 100dvh; }
+
+.streamer-page, .player-start { min-width: 0; overflow-wrap: anywhere; }
+.streamer-page button, .player-start button { touch-action: manipulation; }
+
+@media (max-width: 850px), (pointer: coarse) {
+  .streamer-page button, .player-start button { min-height: 44px; font-size: 14px; }
+  .streamer-page select, .streamer-links input, .player-start input { min-height: 44px; font-size: 16px; }
+  .streamer-page .streamer-toggle { min-height: 44px; margin-bottom: 0; cursor: pointer; }
+  .streamer-toggle input { width: 22px; height: 22px; }
+  .streamer-page .streamer-live-controls { flex-wrap: wrap; }
+}

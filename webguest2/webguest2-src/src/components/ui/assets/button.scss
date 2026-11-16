@@ -1,0 +1,72 @@
+@import "./src/theme/scss/variables.scss";
+
+.custom-button {
+  height: 48px;
+  max-width: 144px;
+  border-radius: 88px;
+  background-color: $white-12;
+
+  &.fluid-button {
+    max-width: unset;
+  }
+
+  &.default-button {
+    &:hover:not(.disabled):not(.active):not(.mobile-button) {
+      background-color: $white-48 !important;
+    }
+
+    &:hover:not(.disabled).active {
+      background-color: $white-40 !important;
+    }
+  }
+
+  &.success-button {
+    box-shadow: 0 4px 20px $success-72;
+
+    &:hover:not(.disable-hover) {
+      background-color: $success-dark !important;
+    }
+
+    &:focus,
+    &:active,
+    &.disabled:hover,
+    &.disable-hover:hover {
+      background-color: $success !important;
+    }
+  }
+
+  &.danger-button {
+    box-shadow: 0 4px 20px $danger-72;
+
+    &:hover:not(.disable-hover) {
+      background-color: $danger-dark !important;
+    }
+
+    &:focus,
+    &:active,
+    &.disabled:hover,
+    &.disable-hover:hover {
+      background-color: $danger !important;
+    }
+  }
+
+  &.info-button {
+    background-color: $info-80;
+
+    &:hover {
+      background-color: $info;
+    }
+  }
+
+  &.active-button {
+    background-color: $white;
+  }
+
+  &:hover:not(.disabled) {
+    box-shadow: none;
+  }
+
+  .custom-button-label {
+    font-size: 14px;
+  }
+}

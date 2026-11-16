@@ -1,0 +1,16 @@
+export const CANDIDATE = "candidate";
+export const ANSWER = "answer";
+export const OFFER = "offer";
+export const REJECTED = "rejected";
+export const END_OF_CANDIDATES = "endOfCandidates";
+export const CONNECTED = "connected";
+export const DISCONNECTED = "disconnected";
+export const FAILED = "failed";
+export const CLOSED = "closed";
+export const VIDEO = "video";
+export const ENDED = "ended";
+export const FIREFOX = "firefox";
+export const DEFAULT_VIDEO_ENCODER = "VP8";
+export const DEFAULT_AUDIO_ENCODER = "OPUS";
+export const DEFAULT_VIDEO_BITRATE = "default";
+export const DEFAULT_AUDIO_BITRATE = "default";

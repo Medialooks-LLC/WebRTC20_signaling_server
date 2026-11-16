@@ -1,0 +1,13 @@
+.video-settings {
+  pointer-events: none !important;
+
+  &.active {
+    pointer-events: all !important;
+  }
+
+  margin-left: -240px !important;
+
+  @media (max-width: 575px) {
+    margin-left: 16px !important;
+  }
+}

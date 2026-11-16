@@ -1,0 +1,51 @@
+# TLS material: private keys must never be committed.
+# Put certificates in etc/ssl/ (and public-api-endpoint/etc/ssl/) locally on the host.
+etc/ssl/*
+!etc/ssl/README.md
+public-api-endpoint/etc/ssl/*
+
+# Web guest source: dependencies and build output
+webguest2/webguest2-src/node_modules/
+webguest2/webguest2-src/build/
+
+# Web guest build output: built from webguest2/webguest2-src inside the image
+webguest2/webguest2/public/
+# Local backup of the untouched original web guest build
+webguest2/webguest2/public.original/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/
+.vscode/
+
+# Reproducible installs and local runtime data are never release sources.
+**/node_modules/
+**/__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+*.cer
+*.ppk
+**/.ssh/
+**/id_rsa
+**/id_ecdsa
+**/id_ed25519
+**/secrets/
+.runtime/
+release-dist/
+generated-release.yml
+
+# Production secrets and deploy state (generated on the server)
+deploy/secrets/
+deploy/.current_tag
+deploy/.previous_tag

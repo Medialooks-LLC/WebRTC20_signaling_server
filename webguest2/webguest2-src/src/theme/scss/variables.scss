@@ -1,0 +1,116 @@
+// Colors
+$transparent: rgba(0, 0, 0, 0);
+
+$white: #ffffff;
+
+$dark-light: #252525;
+$dark: #121212;
+
+$info: #0091d0;
+$muted: #808080;
+$danger: #ae1919;
+$orange: #ff9800;
+$warning: #f9ca24;
+$primary: #30336b;
+$success: #2ba017;
+$secondary: #22a6b3;
+
+$gray: #1b1b1b;
+
+$text-muted: $muted;
+
+$danger-light: #F74444;
+$danger-dark: #a01717;
+
+$success-dark: #268e15;
+
+$info-80: rgba(0, 145, 208, 0.8);
+
+$white-04: rgba(255, 255, 255, 0.04);
+$white-08: rgba(255, 255, 255, 0.08);
+$white-12: rgba(255, 255, 255, 0.12);
+$white-16: rgba(255, 255, 255, 0.16);
+$white-20: rgba(255, 255, 255, 0.2);
+$white-24: rgba(255, 255, 255, 0.24);
+$white-40: rgba(255, 255, 255, 0.4);
+$white-48: rgba(255, 255, 255, 0.48);
+$white-64: rgba(255, 255, 255, 0.64);
+$white-80: rgba(255, 255, 255, 0.8);
+$white-88: rgba(255, 255, 255, 0.88);
+
+$dark-00: rgba(18, 18, 18, 0);
+$dark-12: rgba(18, 18, 18, 0.12);
+$dark-16: rgba(18, 18, 18, 0.16);
+$dark-24: rgba(18, 18, 18, 0.24);
+$dark-40: rgba(18, 18, 18, 0.4);
+$dark-48: rgba(18, 18, 18, 0.48);
+$dark-72: rgba(18, 18, 18, 0.72);
+$dark-80: rgba(18, 18, 18, 0.8);
+
+$light-dark-64: rgba(20, 20, 20, 0.64);
+
+$danger-72: rgba(174, 25, 25, 0.72);
+
+$success-72: rgba(43, 160, 23, 0.72);
+
+$theme-colors: () !default;
+$theme-colors: map-merge(
+  (
+    "dark": $dark,
+    "info": $info,
+    "muted": $muted,
+    "danger": $danger,
+    "orange": $orange,
+    "warning": $warning,
+    "primary": $primary,
+    "success": $success,
+    "secondary": $secondary,
+  ),
+  $theme-colors
+);
+
+// Tables
+$table-cell-padding: 0 8px;
+$table-accent-bg: $text-muted;
+
+// Fonts
+$body-bg: $dark;
+$body-color: $white;
+
+$font-weight-medium: 500;
+$font-weight-semi-bold: 600;
+
+$font-family-base: "Inter", "Arial", sans-serif;
+
+// Spacers
+$spacer: 1rem !default;
+$spacers: () !default;
+
+$spacers: map-merge(
+  (
+    0: 0,
+    1: (
+      $spacer * 0.25,
+    ),
+    2: (
+      $spacer * 0.5,
+    ),
+    3: $spacer,
+    4: (
+      $spacer * 1.25,
+    ),
+    5: (
+      $spacer * 1.5,
+    ),
+    6: (
+      $spacer * 2,
+    ),
+    7: (
+      $spacer * 3,
+    ),
+    8: (
+      $spacer * 4,
+    ),
+  ),
+  $spacers
+);

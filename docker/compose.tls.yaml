@@ -1,0 +1,17 @@
+# Optional direct TLS. Mount your own files; no certificates are built into the image.
+services:
+  webrtc:
+    ports:
+      - "${WEBRTC_BIND_ADDRESS:-127.0.0.1}:${WEBRTC_TLS_PORT:-8443}:8443"
+    environment:
+      TLS_CERT_FILE: /run/tls/fullchain.pem
+      TLS_KEY_FILE: /run/tls/privkey.pem
+    volumes:
+      - type: bind
+        source: ${TLS_CERT_FILE:?Set TLS_CERT_FILE to your certificate chain file}
+        target: /run/tls/fullchain.pem
+        read_only: true
+      - type: bind
+        source: ${TLS_KEY_FILE:?Set TLS_KEY_FILE to your private-key file}
+        target: /run/tls/privkey.pem
+        read_only: true

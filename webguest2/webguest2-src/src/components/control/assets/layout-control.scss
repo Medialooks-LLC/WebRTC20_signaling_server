@@ -1,0 +1,13 @@
+@import "src/theme/scss/variables";
+
+.layout-control {
+  left: 0;
+  right: 0;
+  height: 96px;
+  border-top: 1px solid $white-16;
+  background: linear-gradient(0deg, $light-dark-64 0%, $dark-00 100%);
+
+  .placeholder {
+    width: 112px;
+  }
+}

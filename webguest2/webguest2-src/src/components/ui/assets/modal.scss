@@ -1,0 +1,27 @@
+.custom-modal {
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  padding-bottom: 100px;
+  height: 100%;
+
+  @media (max-height: 614px) {
+    top: 0;
+  }
+
+  &.mobile-modal {
+    height: 100%;
+  }
+
+  &.disabled {
+    pointer-events: all;
+  }
+
+  & > div {
+    pointer-events: auto;
+  }
+
+  @media (max-width: 575px) {
+    top: 0;
+  }
+}

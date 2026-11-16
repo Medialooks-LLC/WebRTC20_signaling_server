@@ -1,0 +1,7 @@
+// Theme entry: project variables override Bootstrap defaults, then project partials.
+@import "variables";
+@import "~bootstrap/scss/bootstrap";
+@import "custom";
+@import "utilities";
+@import "global";
+@import "fonts";

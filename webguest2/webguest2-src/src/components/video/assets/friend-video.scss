@@ -1,0 +1,54 @@
+@import "./src/theme/scss/variables.scss";
+
+.friend-video-wrapper {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  .custom-video-container {
+    height: auto;
+    width: 200px;
+
+    &.vertical-orientation {
+      width: 112px;
+      height: 200px;
+    }
+  }
+
+  //.friend-video-container {
+  //  overflow: hidden;
+  //  border-radius: 8px;
+  //
+  //  .custom-video-container {
+  //    height: auto;
+  //    margin-bottom: -7px;
+  //    display: block !important;
+  //  }
+  //
+  //  .video-overflow {
+  //    top: 0;
+  //    left: 0;
+  //    right: 0;
+  //    bottom: 0;
+  //    opacity: 0;
+  //    background-color: $dark-40;
+  //
+  //    &:hover {
+  //      opacity: 1;
+  //    }
+  //  }
+  //}
+
+  .target-container {
+    & > div {
+      pointer-events: auto;
+    }
+
+    .dnd-target {
+      @media (max-width: 576px) {
+        margin-top: 88px;
+      }
+    }
+  }
+}

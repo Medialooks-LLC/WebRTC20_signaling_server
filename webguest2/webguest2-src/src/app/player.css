@@ -1,0 +1,38 @@
+.player-start {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px));
+  background: #0b0e14;
+  color: #eef1f7;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.player-start-card {
+  width: min(440px, 100%);
+  padding: 32px;
+  border: 1px solid #303746;
+  border-radius: 20px;
+  background: #151922;
+}
+
+.player-start-brand { color: #a7b4cd; font-size: 13px; }
+.player-start h1 { margin: 12px 0; font-size: 30px; }
+.player-start p { color: #a7b4cd; line-height: 1.6; }
+.player-start label { display: block; margin-top: 24px; }
+.player-start input, .player-start button {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font: inherit;
+}
+.player-start input { border: 1px solid #414c61; background: #0b0e14; color: #eef1f7; }
+.player-start button { margin-top: 16px; border: 0; background: #6799ff; color: #081020; font-weight: 600; cursor: pointer; }
+.player-start button:disabled { opacity: 0.5; cursor: default; }
+.player-start input:focus-visible, .player-start button:focus-visible { outline: 2px solid #a5c3ff; outline-offset: 3px; }
+
+@media (max-width: 520px), (max-height: 500px) {
+  .player-start { padding: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px)); }
+  .player-start-card { padding: 24px; }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@medialooks/webrtc20-auth-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned runtime dependencies for the existing sample authorization service",
+  "engines": { "node": ">=24" },
+  "dependencies": {
+    "config": "3.3.7",
+    "nanoid": "3.3.1",
+    "socket.io-client": "4.4.1",
+    "uuid": "8.3.2"
+  }
+}

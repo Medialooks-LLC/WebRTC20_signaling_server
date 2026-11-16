@@ -1,0 +1,55 @@
+@import "~bootstrap/scss/mixins";
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+
+@each $breakpoint in map-keys($grid-breakpoints) {
+  @include media-breakpoint-up($breakpoint) {
+    $infix: breakpoint-infix($breakpoint, $grid-breakpoints);
+
+    @each $size, $length in $spacers {
+      .fs#{$infix}-#{$size} {
+        font-size: $length !important;
+      }
+
+      .lh#{$infix}-#{$size} {
+        line-height: $length !important;
+      }
+
+      .fl#{$infix}-#{$size} {
+        font-size: $length !important;
+        line-height: $length !important;
+      }
+
+      .br#{$infix}-#{$size} {
+        border-radius: $length !important;
+      }
+    }
+
+    .flex#{$infix}-2 {
+      flex: 2 !important;
+    }
+
+    .flex#{$infix}-1 {
+      flex: 1 !important;
+    }
+
+    .flex#{$infix}-0 {
+      flex: 0 !important;
+    }
+  }
+}
+
+@each $breakpoint in map-keys($grid-breakpoints) {
+  @include media-breakpoint-up($breakpoint) {
+    $infix: breakpoint-infix($breakpoint, $grid-breakpoints);
+
+    @each $color, $value in $theme-colors {
+      .bg#{$infix}-#{$color} {
+        background-color: $value !important;
+      }
+      .text#{$infix}-#{$color} {
+        color: $value !important;
+      }
+    }
+  }
+}

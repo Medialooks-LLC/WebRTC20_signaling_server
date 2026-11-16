@@ -1,0 +1,29 @@
+@import "src/theme/scss/variables";
+
+.general-settings {
+  z-index: 2;
+
+  &.desktop-settings {
+    max-height: 90%;
+  }
+
+  pointer-events: none !important;
+
+  &.active {
+    pointer-events: all !important;
+  }
+
+  .overflow-x-hidden {
+    overflow-x: hidden;
+  }
+
+  &.main-landscape {
+    height: 90%;
+    width: 100%;
+    max-height: 488px;
+
+    .main-landscape-item {
+      border-right: 1px solid $white-16 !important;
+    }
+  }
+}

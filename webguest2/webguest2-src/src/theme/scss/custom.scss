@@ -1,0 +1,106 @@
+@import "variables";
+
+@import "~bootstrap/scss/variables";
+
+// Fonts
+.font-weight-medium {
+  font-weight: $font-weight-medium !important;
+}
+.font-weight-semi-bold {
+  font-weight: $font-weight-semi-bold !important;
+}
+
+// Text
+.text-black {
+  color: $black;
+}
+
+.text-ellipsis {
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+
+.text-decoration-underline {
+  text-decoration: underline !important;
+}
+.text-decoration-line-through {
+  text-decoration: line-through !important;
+}
+
+// Controls
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+// Block
+.d-grid {
+  display: -ms-grid !important;
+  display: grid !important;
+}
+
+// Other
+.cursor-move {
+  cursor: move;
+}
+
+.outline-none {
+  outline: none;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+@media (min-width: 576px) {
+  .d-sm-grid {
+    display: -ms-grid !important;
+    display: grid !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .d-md-grid {
+    display: -ms-grid !important;
+    display: grid !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .d-lg-grid {
+    display: -ms-grid !important;
+    display: grid !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .d-xl-grid {
+    display: -ms-grid !important;
+    display: grid !important;
+  }
+}
+
+// Scrollbar
+.hidden-scrollbar {
+  &::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  &::-webkit-scrollbar-track {
+    -webkit-box-shadow: none;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.25);
+    outline: 1px solid rgba(255, 255, 255, 0.25);
+  }
+}

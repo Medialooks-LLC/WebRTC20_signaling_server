@@ -1,0 +1,9 @@
+.mute-button {
+  &.is-friend {
+    height: 55px
+  }
+
+  .button {
+    pointer-events: all;
+  }
+}

@@ -1,0 +1,12 @@
+@import "./src/theme/scss/variables.scss";
+
+// Reconstructed from the compiled CSS (the source map kept only the ui/ input.scss of the same name).
+.input-ui {
+  .error-input {
+    border: 1px solid $danger-light !important;
+  }
+
+  .input-hint-text {
+    color: $danger-light;
+  }
+}

@@ -1,0 +1,68 @@
+@import "src/theme/scss/variables";
+
+.tooltip-item {
+  background: $dark-80;
+  color: white;
+  font-weight: bold;
+  padding: 4px 8px;
+  font-size: 13px;
+  border-radius: 4px;
+  display: none;
+  border: 1px solid $white-16;
+
+  .tooltip-title {
+    font-size: 12px;
+  }
+
+  &[data-show] {
+    display: block;
+  }
+
+  .tooltip-arrow,
+  .tooltip-arrow::before {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    z-index: -1;
+  }
+
+  .tooltip-arrow::before {
+    content: "";
+    background: $dark;
+    transform: rotate(45deg);
+    border: 1px solid $white-16;
+  }
+
+  &[data-popper-placement^="bottom"] > .tooltip-arrow {
+    &:before {
+      border-bottom: none;
+      border-right: none;
+    }
+
+    top: -5px;
+  }
+
+  &[data-popper-placement^="top"] > .tooltip-arrow,
+  &[data-popper-placement^="top-start"] > .tooltip-arrow {
+    &:before {
+      border-top: none;
+      border-left: none;
+    }
+
+    bottom: -5px;
+  }
+
+  &[data-popper-placement^="right"] > .tooltip-arrow {
+    &:before {
+      border-top: none;
+      border-right: none;
+    }
+
+    left: -5px;
+  }
+
+  &[data-hidden] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}

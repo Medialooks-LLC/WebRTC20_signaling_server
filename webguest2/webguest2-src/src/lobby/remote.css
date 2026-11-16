@@ -1,0 +1,713 @@
+/* Playout controls of a remote-controlled stream (see remote.js).
+   Same palette and type as the status pill (theme.css); the bar floats above the bottom control row.
+   Layout: #rc-bar = [drawer with the playlist and the library] + [password] + [the bar]. */
+
+#rc-bar {
+  --rc-safe-top: env(safe-area-inset-top, 0px);
+  --rc-safe-bottom: env(safe-area-inset-bottom, 0px);
+  position: fixed;
+  left: max(8px, env(safe-area-inset-left, 0px));
+  right: max(8px, env(safe-area-inset-right, 0px));
+  bottom: var(--rc-bottom, calc(var(--ic-controls-height, 96px) + env(safe-area-inset-bottom, 0px) + 8px));
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: auto;
+  max-width: 760px;
+  max-height: var(--rc-max-height, calc(100dvh - 120px));
+  margin: 0 auto;
+  box-sizing: border-box;
+  color: var(--ic-text);
+  font: 500 12.5px/1.3 "Inter", system-ui, sans-serif;
+  transition: opacity 0.3s ease;
+}
+
+#rc-bar[hidden],
+#rc-bar [hidden] {
+  display: none !important;
+}
+
+/* The video plays and nobody touches the page: the bar steps aside (any move of the mouse brings it back) */
+#rc-bar.rc-idle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Surfaces: the bar, the drawer, the password */
+#rc-bar .rc-main,
+#rc-bar .rc-panel,
+#rc-bar .rc-lock {
+  background: rgba(21, 25, 34, 0.9);
+  border: 1px solid var(--ic-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ========== The bar ========== */
+
+#rc-bar .rc-main {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+#rc-bar[data-mode="offline"] .rc-main {
+  opacity: 0.65;
+}
+
+#rc-bar[data-mode="offline"] .rc-file {
+  color: var(--ic-warn);
+}
+
+#rc-bar .rc-buttons,
+#rc-bar .rc-side {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+#rc-bar .rc-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ic-text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease, color 0.15s ease;
+}
+
+#rc-bar .rc-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+#rc-bar .rc-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#rc-bar .rc-btn:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+#rc-bar .rc-btn:focus-visible,
+#rc-bar .rc-tab:focus-visible,
+#rc-bar .rc-row-main:focus-visible,
+#rc-bar .rc-item:focus-visible,
+#rc-bar .rc-unlock:focus-visible {
+  outline: 2px solid var(--ic-accent);
+  outline-offset: 1px;
+}
+
+#rc-bar .rc-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#rc-bar .rc-btn.rc-on {
+  color: var(--ic-accent-hover);
+  background: var(--ic-accent-soft);
+}
+
+/* The only filled accent of the bar: the play / pause button */
+#rc-bar .rc-play {
+  width: 40px;
+  height: 40px;
+  background: var(--ic-accent);
+  color: #fff;
+}
+
+#rc-bar .rc-play.rc-on {
+  background: var(--ic-accent);
+  color: #fff;
+}
+
+#rc-bar .rc-play:hover:not(:disabled) {
+  background: var(--ic-accent-hover);
+}
+
+#rc-bar .rc-prev,
+#rc-bar .rc-next {
+  width: 32px;
+  height: 32px;
+}
+
+/* ========== Timeline ========== */
+
+#rc-bar .rc-timeline {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#rc-bar .rc-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--ic-text-2);
+  flex: 0 0 auto;
+}
+
+#rc-bar .rc-seek {
+  --rc-fill: 0%;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: pan-y;
+}
+
+#rc-bar .rc-seek:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+#rc-bar .rc-seek::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ic-text) var(--rc-fill), rgba(255, 255, 255, 0.2) var(--rc-fill));
+}
+
+#rc-bar .rc-seek::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#rc-bar .rc-seek::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ic-text);
+}
+
+#rc-bar .rc-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ic-text);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0);
+  transition: box-shadow 0.15s ease;
+}
+
+#rc-bar .rc-seek::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ic-text);
+}
+
+#rc-bar .rc-seek:hover::-webkit-slider-thumb,
+#rc-bar .rc-seek:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.16);
+}
+
+/* The time under the mouse */
+#rc-bar .rc-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ic-surface-solid);
+  border: 1px solid var(--ic-border-strong);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+#rc-bar .rc-file {
+  flex: 0 1 150px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ic-text-3);
+}
+
+/* ========== The drawer: playlist and library ========== */
+
+#rc-bar .rc-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(48vh, 400px);
+  border-radius: 18px;
+  overflow: hidden;
+  min-height: 0;
+  flex: 0 1 auto;
+}
+
+#rc-bar .rc-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ic-border);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+#rc-bar .rc-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+#rc-bar .rc-tab {
+  padding: 7px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ic-text-2);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#rc-bar .rc-tab:hover {
+  color: var(--ic-text);
+}
+
+#rc-bar .rc-tab.rc-sel {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ic-text);
+}
+
+#rc-bar .rc-count {
+  color: var(--ic-text-3);
+}
+
+#rc-bar .rc-tools {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+#rc-bar .rc-tools .rc-btn {
+  width: auto;
+  height: 30px;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  grid-auto-flow: column;
+  color: var(--ic-text-2);
+}
+
+#rc-bar .rc-tools .rc-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+#rc-bar .rc-list,
+#rc-bar .rc-liblist {
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+#rc-bar .rc-lib {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+#rc-bar .rc-search,
+#rc-bar .rc-lock-input {
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--ic-border-strong);
+  border-radius: 999px;
+  background: var(--ic-surface-2);
+  color: var(--ic-text);
+  font: inherit;
+  outline: none;
+}
+
+#rc-bar .rc-search {
+  margin: 8px 10px 0;
+  flex-shrink: 0;
+}
+
+#rc-bar .rc-search:focus,
+#rc-bar .rc-lock-input:focus {
+  border-color: var(--ic-accent);
+}
+
+#rc-bar .rc-row {
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  transition: background-color 0.4s ease;
+}
+
+#rc-bar .rc-row:hover,
+#rc-bar .rc-row:focus-within {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+#rc-bar .rc-row.rc-cur {
+  background: var(--ic-accent-soft);
+}
+
+#rc-bar .rc-row.rc-added {
+  background: rgba(47, 191, 113, 0.22);
+  transition: none;
+}
+
+#rc-bar .rc-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ic-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#rc-bar .rc-num,
+#rc-bar .rc-now,
+#rc-bar .rc-add {
+  display: grid;
+  place-items: center;
+  flex: 0 0 18px;
+  color: var(--ic-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+#rc-bar .rc-now {
+  color: var(--ic-accent-hover);
+}
+
+#rc-bar .rc-now svg,
+#rc-bar .rc-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+#rc-bar .rc-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#rc-bar .rc-cur .rc-name {
+  color: var(--ic-accent-hover);
+}
+
+#rc-bar .rc-dir {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ic-text-3);
+  font-size: 11.5px;
+}
+
+#rc-bar .rc-row-actions {
+  display: flex;
+  gap: 0;
+  padding-right: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+#rc-bar .rc-row:hover .rc-row-actions,
+#rc-bar .rc-row:focus-within .rc-row-actions {
+  opacity: 1;
+}
+
+/* No mouse to hover with: the buttons of a row are always there */
+@media (hover: none) {
+  #rc-bar .rc-row-actions {
+    opacity: 1;
+  }
+}
+
+#rc-bar .rc-mini {
+  width: 30px;
+  height: 30px;
+}
+
+#rc-bar .rc-mini svg {
+  width: 15px;
+  height: 15px;
+}
+
+#rc-bar .rc-empty,
+#rc-bar .rc-empty-row {
+  padding: 22px 16px;
+  color: var(--ic-text-3);
+  text-align: center;
+  list-style: none;
+}
+
+/* ========== Password ========== */
+
+#rc-bar .rc-lock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+#rc-bar .rc-lock-icon {
+  display: grid;
+  color: var(--ic-text-2);
+}
+
+#rc-bar .rc-lock-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+#rc-bar .rc-lock-msg {
+  flex: 0 0 auto;
+  overflow-wrap: anywhere;
+}
+
+#rc-bar .rc-lock.rc-wrong .rc-lock-msg {
+  color: var(--ic-danger);
+}
+
+#rc-bar .rc-lock-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#rc-bar .rc-unlock {
+  height: 34px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--ic-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#rc-bar .rc-unlock:hover {
+  background: var(--ic-accent-hover);
+}
+
+/* ========== Output (renderer) menu and the answers of the player: above the bar ========== */
+
+#rc-bar .rc-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  min-width: 240px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--ic-surface);
+  border: 1px solid var(--ic-border-strong);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--ic-shadow);
+  box-sizing: border-box;
+  max-height: min(400px, var(--rc-popup-height, calc(100dvh - 200px)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#rc-bar .rc-menu-title {
+  padding: 6px 10px 8px;
+  color: var(--ic-text-3);
+  font-size: 11.5px;
+}
+
+#rc-bar .rc-item {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ic-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#rc-bar .rc-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#rc-bar .rc-item.rc-active {
+  color: var(--ic-accent-hover);
+  background: var(--ic-accent-soft);
+}
+
+/* Something failed, e.g. the device is busy */
+#rc-bar .rc-toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  max-width: 100%;
+  max-height: var(--rc-popup-height, 160px);
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--ic-surface-solid);
+  border: 1px solid rgba(239, 74, 74, 0.5);
+  color: var(--ic-text);
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+/* ========== Narrow windows and phones ========== */
+
+@media (max-width: 720px) {
+  #rc-bar .rc-file {
+    display: none;
+  }
+}
+
+@media (max-width: 575px) {
+  #rc-bar {
+    bottom: var(--rc-bottom, calc(var(--ic-controls-height, 96px) + env(safe-area-inset-bottom, 0px) + 8px));
+  }
+
+  /* The buttons in one row, the timeline under them */
+  #rc-bar .rc-main {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 8px;
+    padding: 8px 10px;
+    border-radius: 22px;
+  }
+
+  #rc-bar .rc-buttons {
+    order: 1;
+    flex: 1 0 100%;
+    justify-content: space-between;
+    gap: 2px;
+  }
+
+  #rc-bar .rc-side {
+    order: 3;
+  }
+
+  #rc-bar .rc-timeline {
+    order: 2;
+    flex: 1 1 160px;
+    gap: 6px;
+  }
+
+  #rc-bar .rc-lock {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    border-radius: 22px;
+    padding: 12px;
+  }
+
+  #rc-bar .rc-lock-input {
+    width: 100%;
+  }
+
+  #rc-bar .rc-lock-icon {
+    display: none;
+  }
+
+  #rc-bar .rc-lock-msg {
+    grid-column: 1 / -1;
+  }
+
+  #rc-bar .rc-panel {
+    max-height: min(52dvh, 400px);
+  }
+
+  #rc-bar .rc-dir {
+    display: none;
+  }
+}
+
+/* Touch controls stay usable after rotation, including wide phones and tablets. */
+@media (pointer: coarse), (max-width: 575px) {
+  #rc-bar .rc-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  #rc-bar .rc-tab,
+  #rc-bar .rc-row-main,
+  #rc-bar .rc-item,
+  #rc-bar .rc-unlock {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  #rc-bar .rc-tools .rc-btn {
+    width: auto;
+    height: 44px;
+  }
+
+  #rc-bar .rc-seek {
+    height: 44px;
+  }
+
+  #rc-bar .rc-search,
+  #rc-bar .rc-lock-input {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  #rc-bar .rc-lock-msg {
+    flex-shrink: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #rc-bar,
+  #rc-bar .rc-btn,
+  #rc-bar .rc-row,
+  #rc-bar .rc-seek::-webkit-slider-thumb {
+    transition: none;
+  }
+}
