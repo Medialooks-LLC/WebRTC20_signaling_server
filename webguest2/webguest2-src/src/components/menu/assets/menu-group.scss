@@ -1,0 +1,15 @@
+@import "./src/theme/scss/variables.scss";
+
+.menu-group {
+  width: 300px;
+  z-index: 101;
+  border-radius: 16px;
+  background-color: $dark-80;
+  border: 1px solid $white-08;
+
+  @media (max-width: 480px) {
+    flex: 1;
+    width: auto;
+    align-self: unset !important;
+  }
+}

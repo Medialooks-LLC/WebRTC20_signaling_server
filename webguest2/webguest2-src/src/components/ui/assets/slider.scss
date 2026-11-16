@@ -1,0 +1,21 @@
+@import "src/theme/scss/variables";
+
+.react-slider {
+  height: 12px;
+  border-radius: 12px;
+  background-color: $white-16;
+
+  & > .track.track-0 {
+    height: 12px;
+    border-radius: 6px;
+    background-color: $white;
+  }
+
+  & > .thumb {
+    width: 12px;
+    height: 12px;
+    outline: none;
+    border-radius: 6px;
+    background-color: $white;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "imported": "2026-11-16",
+  "legacy_source_commit": "2b4916a8b0ab035843de1a2b9f706d631809fc74",
+  "history": "Clean source import onto the GitLab project history; local legacy history and production configuration are not mirrored.",
+  "frontend_provenance": "webguest2/webguest2-src/README.md"
+}

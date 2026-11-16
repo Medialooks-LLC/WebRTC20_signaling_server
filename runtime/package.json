@@ -1,0 +1,11 @@
+{
+  "name": "@medialooks/webrtc20-container-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Unified HTTP/HTTPS frontend, signaling proxy and child-process lifecycle",
+  "engines": { "node": ">=24" },
+  "dependencies": {
+    "http-proxy": "1.18.1",
+    "socket.io-client": "4.4.1"
+  }
+}

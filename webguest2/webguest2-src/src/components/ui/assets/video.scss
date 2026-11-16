@@ -1,0 +1,15 @@
+.custom-video-container {
+  &:not(.disabled) {
+    height: 100vh;
+  }
+
+  .custom-video {
+    width: 100%;
+  }
+}
+
+.video-container:-webkit-full-screen	{ width: 100% }
+.video-container:-moz-full-screen		{ width: 100% }
+.video-container:-ms-full-screen		{ width: 100% }
+.video-container:-o-full-screen		    { width: 100% }
+.video-container:full-screen			{ width: 100% }

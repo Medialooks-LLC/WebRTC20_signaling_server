@@ -1,0 +1,14 @@
+{
+  "name": "@medialooks/webrtc20-signaling-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned runtime dependencies for the existing WebRTC 2.0 signaling server",
+  "engines": { "node": ">=24" },
+  "dependencies": {
+    "getconfig": "2.1.0",
+    "lodash": "4.17.21",
+    "moment": "2.30.1",
+    "node-static": "0.7.11",
+    "socket.io": "4.0.1"
+  }
+}

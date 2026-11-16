@@ -1,0 +1,53 @@
+@import "src/theme/scss/variables";
+
+.friend-video-base {
+  .video-wrapper {
+    width: 267px;
+    height: 185px;
+
+    .custom-video {
+      width: 267px;
+      height: 185px;
+    }
+
+    .video-overflow {
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+
+      &.with-overflow {
+        opacity: 0;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+
+      .overflow-minimize-button {
+        top: 8px;
+        right: 8px;
+      }
+    }
+  }
+
+  &.vertical-orientation {
+    .video-wrapper {
+      width: 168px;
+      height: 222px;
+    }
+
+    .custom-video {
+      width: 168px;
+      height: 222px;
+    }
+  }
+
+  .mute-layout {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+  }
+}

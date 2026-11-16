@@ -1,0 +1,60 @@
+@import "./src/theme/scss/variables.scss";
+
+.video-layout {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  .top-layout {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    pointer-events: none;
+    background: linear-gradient(180deg, $dark-24 0%, $dark-00 100%);
+  }
+
+  .logo-layout {
+    top: 20px;
+    left: 16px;
+  }
+
+  .control-layout {
+    top: 16px;
+    z-index: 1;
+    right: 16px;
+  }
+
+  .middle-layout {
+    z-index: 2;
+    pointer-events: none;
+
+    &.mobile-middle-layout {
+      left: 0;
+      right: 0;
+      top: 72px;
+      bottom: 96px;
+    }
+  }
+
+  .bottom-layout {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    height: 96px;
+
+    & > div {
+      height: 96px;
+    }
+  }
+
+  .unmute-layout {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+  }
+}

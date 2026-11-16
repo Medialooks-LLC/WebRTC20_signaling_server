@@ -1,0 +1,31 @@
+@import "./src/theme/scss/variables.scss";
+
+
+
+.menu-item {
+  font-size: 12px;
+  min-height: 51px;
+  background-color: $transparent !important;
+  transition: background-color 0.3s ease-in-out;
+
+  &:hover:not(.disabled) {
+    background-color: $white-08 !important;
+  }
+
+  &.disabled {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  &:not(:first-child) {
+    border-top: 1px solid $white-16 !important;
+  }
+
+  .value-container {
+    max-width: 70px;
+  }
+
+  .menu-item-title {
+    white-space: nowrap;
+  }
+}

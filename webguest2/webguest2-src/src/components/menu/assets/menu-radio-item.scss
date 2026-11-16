@@ -1,0 +1,9 @@
+.menu-radio-item {
+  .check-icon {
+    opacity: 0;
+
+    &.active {
+      opacity: 1;
+    }
+  }
+}
