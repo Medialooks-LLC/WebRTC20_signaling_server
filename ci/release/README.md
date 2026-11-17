@@ -71,6 +71,13 @@ configuration. Long-lived credentials are not embedded in the image or release.
    succeeds only after a fresh complete checkpoint verification. If the job
    fails after publication, retry sees the verified checkpoint and skips build.
 
+Publication uses one final PATCH with explicit tag, source commit, notes,
+`draft=false` and `prerelease=false`, after a fresh owned-draft/tag check.
+GitHub removes the current release tag when PATCH omits `tag_name`; even a
+notes-only PATCH must not precede this publication gate. Draft `html_url` values
+may normally contain `untagged-*`; verification uses the API's `tag_name` and
+the actual Git tag target instead.
+
 No persistent GitLab variable, expiring job artifact or CI cache is used as a
 release checkpoint. GitHub's `/releases/latest` is deliberately unused: its
 ordering follows commit creation dates, which need not match release order.

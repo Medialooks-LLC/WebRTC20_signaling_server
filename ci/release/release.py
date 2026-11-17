@@ -375,19 +375,34 @@ class Release:
             raise ReleaseError("Multiple releases use the managed source tag")
         if matches:
             release = matches[0]
-            if marker(self.project, self.branch, self.sha) not in (release.get("body") or ""):
-                raise ReleaseError("Existing tag/release is not owned by this automation")
-            if not release["draft"]:
-                raise ReleaseError("Published release must be handled by checkpoint verification")
+            self.verify_draft(release)
             return release
         payload = {"tag_name": self.tag, "target_commitish": self.sha, "name": "WebRTC 2.0 " + self.sha[:12],
                    "body": marker(self.project, self.branch, self.sha), "draft": True, "prerelease": False}
         try:
-            return self.github.request("POST", f"{self.prefix}/releases", payload)[1]
+            release = self.github.request("POST", f"{self.prefix}/releases", payload)[1]
         except ReleaseError:
             # A POST response can be lost after creation. Reconcile on the next
             # retry rather than creating another release or publishing blindly.
             raise ReleaseError("Draft creation did not complete cleanly; retry safely to reconcile") from None
+        self.verify_draft(release)
+        return release
+
+    def verify_draft(self, release, expected_id=None):
+        if (not isinstance(release, dict) or not release.get("id")
+                or (expected_id is not None and release["id"] != expected_id)
+                or release.get("draft") is not True
+                or release.get("prerelease") is not False
+                or release.get("tag_name") != self.tag
+                or marker(self.project, self.branch, self.sha) not in (release.get("body") or "")):
+            raise ReleaseError("Release is not the expected automation-owned tagged draft")
+
+    def verify_publication_draft(self, release_id):
+        # Do not rely on the creation response or a stale listing after uploads.
+        self.verify_draft(self.github.get(f"{self.prefix}/releases/{release_id}"), release_id)
+        tag = self.github.get(f"{self.prefix}/git/ref/tags/{quote(self.tag, safe='')}")
+        if tag["object"]["type"] != "commit" or tag["object"]["sha"] != self.sha:
+            raise ReleaseError("Release tag changed before publication")
 
     def upload(self, release, directory):
         existing = {a["name"]: a for a in self.assets(release)}
@@ -544,9 +559,15 @@ class Release:
             # GitHub limits release bodies; retain COMPLETE notes as an asset.
             if len(body.encode("utf-8")) > 100000:
                 body = marker(self.project, self.branch, self.sha) + "\n\nFull release notes are attached as release-notes.md.\n"
-            self.github.request("PATCH", f"{self.prefix}/releases/{release['id']}", {"body": body})
+            self.verify_publication_draft(release["id"])
+            # GitHub removes the existing tag when a release PATCH omits
+            # tag_name (also guarded in GitHub CLI's release edit command).
+            # Send all identity/state fields with the notes in ONE final call;
+            # a metadata-only PATCH must never detach or publish the draft.
+            publication = {"tag_name": self.tag, "target_commitish": self.sha,
+                           "body": body, "draft": False, "prerelease": False, "make_latest": "true"}
             try:
-                self.github.request("PATCH", f"{self.prefix}/releases/{release['id']}", {"draft": False, "make_latest": "true"})
+                self.github.request("PATCH", f"{self.prefix}/releases/{release['id']}", publication)
             except ReleaseError:
                 # Publication is the ONLY checkpoint transition. A lost response
                 # is successful only if a fresh full verification sees this SHA.

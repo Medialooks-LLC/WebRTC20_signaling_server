@@ -198,6 +198,8 @@ class FakeHub:
         self.releases, self.files, self.tags = [], {}, {}
         self.events, self.fail = [], None
         self.next_asset = 100
+        self.patch_payloads = []
+        self.before_publication = None
 
     def pages(self, path):
         if "/assets?" in path:
@@ -218,7 +220,10 @@ class FakeHub:
         if method == "GET" and "/git/ref/tags/" in path:
             return 200, {"object": {"type": "commit", "sha": self.tags[path.split("/tags/")[1]]}}, {}
         if method == "GET" and "/releases/" in path:
-            return 200, copy.deepcopy(self.get_release(int(path.rsplit("/", 1)[1]))), {}
+            release = self.get_release(int(path.rsplit("/", 1)[1]))
+            if self.before_publication and len(release.get("assets", [])) == len(r.EXPECTED):
+                self.before_publication(release)
+            return 200, copy.deepcopy(release), {}
         if method == "POST" and path.endswith("/releases"):
             if self.fail == "draft": raise r.ReleaseError("simulated draft failure")
             release = dict(data, id=len(self.releases) + 1, assets=[], upload_url="https://uploads.github.com/upload/{?name}")
@@ -245,11 +250,15 @@ class FakeHub:
             return 204, None, {}
         if method == "PATCH":
             release = self.get_release(int(path.rsplit("/", 1)[1]))
+            self.patch_payloads.append(copy.deepcopy(data))
             if data.get("draft") is False and self.fail == "publish":
                 raise r.ReleaseError("simulated publish failure")
             if "body" in data and self.fail == "notes":
                 raise r.ReleaseError("simulated notes failure")
-            release.update(data)
+            # Real GitHub does NOT preserve the existing tag when omitted from
+            # PATCH. A plain dict.update hid the first real publication defect.
+            # Model state defaults too: metadata-only writes are not safe gates.
+            release.update({"tag_name": "untagged-test-placeholder", "draft": False, "prerelease": False}, **data)
             if data.get("draft") is False and self.fail == "lost-publish-response":
                 raise r.ReleaseError("lost response after publication")
             return 200, copy.deepcopy(release), {}
@@ -354,6 +363,24 @@ class WorkflowTests(GitRepo):
         self.assertEqual(len(release.github.releases), 1)
         self.assertFalse(release.github.releases[0]["draft"])
         self.assertEqual(release.checkpoint(), release.sha)
+        self.assertEqual(len(release.github.patch_payloads), 1)
+        payload = release.github.patch_payloads[0]
+        self.assertEqual(payload["tag_name"], release.tag)
+        self.assertEqual(payload["target_commitish"], release.sha)
+        self.assertIs(payload["draft"], False)
+        self.assertIs(payload["prerelease"], False)
+        self.assertEqual(payload["make_latest"], "true")
+        self.assertIn("## Complete commit list", payload["body"])
+        patch_index = next(i for i, event in enumerate(release.github.events) if event[0] == "PATCH")
+        upload_indexes = [i for i, event in enumerate(release.github.events)
+                          if event[0] == "POST" and event[1].startswith("https://uploads.github.com/")]
+        self.assertEqual(len(upload_indexes), 4)
+        self.assertGreater(patch_index, max(upload_indexes))
+        # The last operations before publication re-read the owned draft and
+        # its actual tag target. There is no intermediate metadata PATCH.
+        self.assertEqual(release.github.events[patch_index - 2][0], "GET")
+        self.assertIn("/releases/", release.github.events[patch_index - 2][1])
+        self.assertIn("/git/ref/tags/", release.github.events[patch_index - 1][1])
         build = next(c for c in calls if c[:2] == ["docker", "build"])
         self.assertIn("linux/amd64", build)
         self.assertTrue(any(c[:2] == ["python3", "tests/container/smoke.py"] for c in calls))
@@ -375,6 +402,42 @@ class WorkflowTests(GitRepo):
         self.commit("initial")
         release, _ = self.simulate("lost-publish-response")
         self.assertEqual(release.checkpoint(), release.sha)
+        self.assertEqual(len(release.github.patch_payloads), 1)
+        self.assertEqual(release.github.releases[0]["tag_name"], release.tag)
+
+    def test_api_fixture_reproduces_omitted_tag_patch_regression(self):
+        release = release_object()
+        draft = release.draft()
+        release.github.request("PATCH", f"{release.prefix}/releases/{draft['id']}", {"body": "metadata only"})
+        changed = release.github.get_release(draft["id"])
+        self.assertEqual(changed["tag_name"], "untagged-test-placeholder")
+        self.assertFalse(changed["draft"])
+
+    def test_changed_draft_identity_or_tag_before_publication_stops_without_patch(self):
+        self.commit("initial")
+        for field in ("tag_name", "draft", "prerelease", "body", "tag_target"):
+            with self.subTest(field=field):
+                hub = FakeHub()
+                def change(draft):
+                    if field == "tag_target": hub.tags[draft["tag_name"]] = B
+                    else: draft[field] = {"tag_name": "untagged-test-placeholder", "draft": False,
+                                         "prerelease": True, "body": "foreign body"}[field]
+                hub.before_publication = change
+                with self.assertRaises(r.ReleaseError): self.simulate(hub=hub)
+                self.assertFalse(hub.patch_payloads)
+
+    def test_bad_creation_response_is_rejected_before_upload(self):
+        release = release_object()
+        request = release.github.request
+        def invalid_response(method, path, *args, **kwargs):
+            status, body, headers = request(method, path, *args, **kwargs)
+            if method == "POST" and path.endswith("/releases"):
+                body["tag_name"] = "untagged-test-placeholder"
+            return status, body, headers
+        release.github.request = invalid_response
+        with self.assertRaisesRegex(r.ReleaseError, "expected.*tagged draft"):
+            release.draft()
+        self.assertFalse(release.github.files)
 
     def test_draft_upload_skips_matching_and_repairs_own_starter_only(self):
         release = release_object()
