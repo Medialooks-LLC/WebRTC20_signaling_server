@@ -78,6 +78,10 @@ and its credentials are deployment-specific; the image does not embed a TURN ser
 Development source: [GitLab](https://gitlab.medialooks.net/bujmakov/WebRTC20_signaling_server).
 Release mirror: [GitHub](https://github.com/Medialooks-LLC/WebRTC20_signaling_server).
 
+The first publication is **Initial release** (`v1.0.0`). Its
+[release notes](release-notes/initial.md) describe the changes from the original
+application rather than internal development history.
+
 Protected default-branch pipelines enter a serialized release lane. A lightweight
 check compares the commit with the last verified published release. With no new
 commits, the Docker build/publication job is not created. Failed drafts do not
@@ -85,7 +89,7 @@ advance the checkpoint, so the same commit can be retried safely.
 
 For a changed commit, CI builds and tests the image, synchronizes the source branch
 and release tag to GitHub, uploads the Docker archive/checksums/manifest/notes to a
-draft, and publishes it after verification. Release notes include all merged GitLab
+draft, and publishes it after verification. Subsequent release notes include all merged GitLab
 MRs introduced since the previous release, plus direct commits. Pagination and the
 complete Git commit range are used rather than a date cutoff.
 

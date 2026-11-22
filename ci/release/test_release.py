@@ -15,11 +15,13 @@ spec.loader.exec_module(r)
 A, B, C = "a" * 40, "b" * 40, "c" * 40
 
 
-def bundle(sha=A, previous=None, archive=b"docker archive"):
+def bundle(sha=A, previous=None, archive=b"docker archive", identity=None):
     data = {r.ARCHIVE: archive, r.NOTES: b"complete release notes\n"}
     manifest = {"schema": 1, "managed_by": r.MANAGED,
                 "source": {"project_id": 143, "branch": "main", "sha": sha, "previous_sha": previous},
                 "artifacts": [{"name": name, "size": len(raw), "sha256": r.digest(raw)} for name, raw in data.items()]}
+    if identity is not None:
+        manifest["release"] = identity
     data[r.MANIFEST] = r.canonical(manifest)
     data[r.SUMS] = "".join(f"{r.digest(data[n])}  {n}\n" for n in (r.ARCHIVE, r.NOTES, r.MANIFEST)).encode()
     return data
@@ -47,6 +49,10 @@ class GitRepo(unittest.TestCase):
         self.git.run("init", "-b", "main")
         self.git.run("config", "user.name", "Release tests")
         self.git.run("config", "user.email", "release-tests@example.invalid")
+        notes_path = self.path / r.INITIAL_NOTES
+        notes_path.parent.mkdir()
+        notes_path.write_text("# Initial release\n\nReviewed initial comparison with the original application.\n", encoding="utf-8")
+        self.git.run("add", r.INITIAL_NOTES)
 
     def commit(self, title):
         self.git.run("commit", "--allow-empty", "-m", title)
@@ -154,6 +160,26 @@ class ManifestTests(unittest.TestCase):
         with self.assertRaises(r.ReleaseError):
             r.parse_sums(("0" * 64 + "  a\n") .encode() * 2)
 
+    def test_initial_tag_requires_explicit_identity_and_no_previous_source(self):
+        identity = {"tag": r.INITIAL_TAG, "name": r.INITIAL_NAME}
+        good = bundle(identity=identity)
+        out = r.validate_checkpoint(good[r.MANIFEST], good[r.SUMS], assets(good), "143", "main", r.INITIAL_TAG)
+        self.assertEqual(out["release"], identity)
+        for invalid, previous in ((None, None), ({"tag": "arbitrary", "name": r.INITIAL_NAME}, None),
+                                  ({"tag": r.INITIAL_TAG, "name": "Other name"}, None), (identity, B)):
+            with self.subTest(identity=invalid, previous=previous):
+                data = bundle(identity=invalid, previous=previous)
+                with self.assertRaises(r.ReleaseError):
+                    r.validate_checkpoint(data[r.MANIFEST], data[r.SUMS], assets(data), "143", "main", r.INITIAL_TAG)
+
+    def test_release_identity_does_not_allow_arbitrary_checkpoint_tags(self):
+        for tag, identity in (("arbitrary", {"tag": "arbitrary", "name": "Other"}),
+                              ("meet-" + A, {"tag": "meet-" + B, "name": "Other"})):
+            with self.subTest(tag=tag):
+                data = bundle(identity=identity)
+                with self.assertRaises(r.ReleaseError):
+                    r.validate_checkpoint(data[r.MANIFEST], data[r.SUMS], assets(data), "143", "main", tag)
+
 
 def mr(iid, merge=None, squash=None, head=None, state="merged", **kwargs):
     return {"project_id": 143, "iid": iid, "title": "Change " + str(iid), "web_url": f"https://gitlab.invalid/mr/{iid}",
@@ -191,6 +217,39 @@ class NotesTests(unittest.TestCase):
         self.assertEqual([m["iid"] for m in changes["merge_requests"]], [1, 2])
         self.assertEqual(changes["direct_commits"], [])
         self.assertTrue(all("updated_after" not in p and "merged_after" not in p for p in paths))
+
+    def test_generated_notes_remove_internal_branding_and_merge_branch_names(self):
+        brand = "Co" + "DeX"
+        subjects = {A: "Merge branch '" + brand + "/historical-internal-name' into 'main'",
+                    B: brand + " improved playback", C: "Fix useful behavior"}
+        git = types.SimpleNamespace(commits=lambda *_: [A, B, C],
+            run=lambda *args: types.SimpleNamespace(stdout=subjects[args[-1]] + "\n"))
+        entry = mr(1, merge=C)
+        entry.update(title=brand + " remote controls", web_url="https://gitlab.invalid/" + brand + "/1")
+        api = types.SimpleNamespace(pages=lambda path: iter([entry]) if "?state=merged" in path else iter([]))
+        text, changes = r.notes(git, api, "143", "https://gitlab.invalid/" + brand, "d" * 40, C)
+        self.assertNotIn(brand.lower(), text.lower())
+        self.assertNotIn(brand.lower(), json.dumps(changes).lower())
+        self.assertNotIn("historical-internal-name", text)
+        self.assertIn("Merge request changes", text)
+        self.assertIn("automation improved playback", text)
+        self.assertEqual(changes["merge_requests"][0]["url"], "")
+        self.assertEqual(r.public_url("https://example.invalid/co%64ex/path"), "")
+        self.assertEqual(r.public_title("Merge branch 'historical-internal-name' into 'main'"), "Merge request changes")
+
+    def test_initial_notes_use_only_the_versioned_document(self):
+        calls = []
+        brand = "CO" + "DEX"
+        git = types.SimpleNamespace(run=lambda *args: (calls.append(args) or types.SimpleNamespace(
+            stdout="# Initial release\n\nReviewed differences. " + brand + " helper.\n")))
+        text = r.initial_notes(git, A)
+        self.assertEqual(calls, [("show", A + ":release-notes/initial.md")])
+        self.assertIn("Reviewed differences", text)
+        self.assertNotIn(brand.lower(), text.lower())
+        self.assertNotIn("Complete commit list", text)
+        git.run = lambda *_: types.SimpleNamespace(stdout=" \n")
+        with self.assertRaisesRegex(r.ReleaseError, "empty"):
+            r.initial_notes(git, A)
 
 
 class FakeHub:
@@ -264,9 +323,11 @@ class FakeHub:
             return 200, copy.deepcopy(release), {}
         raise AssertionError((method, path))
 
-    def published(self, sha=A, previous=None):
-        content = bundle(sha, previous)
-        item = {"id": len(self.releases) + 1, "tag_name": "meet-" + sha, "draft": False, "prerelease": False,
+    def published(self, sha=A, previous=None, tag=None):
+        tag = tag or "meet-" + sha
+        identity = {"tag": r.INITIAL_TAG, "name": r.INITIAL_NAME} if tag == r.INITIAL_TAG else None
+        content = bundle(sha, previous, identity=identity)
+        item = {"id": len(self.releases) + 1, "tag_name": tag, "draft": False, "prerelease": False,
                 "body": r.marker("143", "main", sha), "assets": assets(content)}
         self.releases.append(item)
         self.files.update({a["url"]: content[a["name"]] for a in item["assets"]})
@@ -286,6 +347,12 @@ def release_object(git=None):
 
 
 class CheckpointTests(unittest.TestCase):
+    def test_initial_release_is_a_verified_checkpoint_and_skips_same_sha(self):
+        release = release_object()
+        release.github.published(A, tag=r.INITIAL_TAG)
+        self.assertEqual(release.checkpoint(), A)
+        self.assertEqual(r.decision(release.git, release.checkpoint(), A), "unchanged")
+
     def test_ignores_drafts_and_foreign_releases(self):
         release = release_object()
         release.github.published()["draft"] = True
@@ -370,7 +437,15 @@ class WorkflowTests(GitRepo):
         self.assertIs(payload["draft"], False)
         self.assertIs(payload["prerelease"], False)
         self.assertEqual(payload["make_latest"], "true")
-        self.assertIn("## Complete commit list", payload["body"])
+        self.assertEqual(payload["tag_name"], r.INITIAL_TAG)
+        self.assertEqual(payload["name"], r.INITIAL_NAME)
+        self.assertIn("Reviewed initial comparison", payload["body"])
+        self.assertNotIn("Complete commit list", payload["body"])
+        self.assertNotIn("Direct commits", payload["body"])
+        self.assertEqual(release.github.files["asset/" + r.NOTES].decode(),
+                         "# Initial release\n\nReviewed initial comparison with the original application.\n")
+        manifest = json.loads(release.github.files["asset/" + r.MANIFEST])
+        self.assertEqual(manifest["release"], {"tag": r.INITIAL_TAG, "name": r.INITIAL_NAME})
         patch_index = next(i for i, event in enumerate(release.github.events) if event[0] == "PATCH")
         upload_indexes = [i for i, event in enumerate(release.github.events)
                           if event[0] == "POST" and event[1].startswith("https://uploads.github.com/")]
@@ -383,9 +458,26 @@ class WorkflowTests(GitRepo):
         self.assertIn("/git/ref/tags/", release.github.events[patch_index - 1][1])
         build = next(c for c in calls if c[:2] == ["docker", "build"])
         self.assertIn("linux/amd64", build)
+        self.assertIn("VERSION=" + r.INITIAL_TAG, build)
         self.assertTrue(any(c[:2] == ["python3", "tests/container/smoke.py"] for c in calls))
         release.command = lambda *_a, **_kw: self.fail("unchanged retry must not invoke Docker")
         release.run()
+
+    def test_subsequent_release_keeps_source_tag_and_mr_commit_notes(self):
+        first = self.commit("initial")
+        initial, _ = self.simulate()
+        second = self.commit("Improve playback controls")
+        release, _ = self.simulate(hub=initial.github)
+        self.assertEqual(release.tag, "meet-" + second)
+        self.assertEqual(release.checkpoint(), second)
+        payload = release.github.patch_payloads[-1]
+        self.assertEqual(payload["name"], "WebRTC 2.0 " + second[:12])
+        self.assertIn("## Complete commit list", payload["body"])
+        self.assertIn("Improve playback controls", payload["body"])
+        self.assertNotIn("Reviewed initial comparison", payload["body"])
+        manifest = json.loads(release.github.files["asset/" + r.MANIFEST])
+        self.assertEqual(manifest["source"]["previous_sha"], first)
+        self.assertEqual(manifest["release"]["tag"], "meet-" + second)
 
     def test_failure_each_phase_keeps_checkpoint_and_retry_resumes(self):
         self.commit("initial")

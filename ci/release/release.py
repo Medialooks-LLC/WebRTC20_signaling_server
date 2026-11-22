@@ -15,7 +15,7 @@ import sys
 import tempfile
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 MANAGED = "videosdk-meet-gitlab-release-v1"
@@ -26,6 +26,10 @@ SUMS = "SHA256SUMS"
 EXPECTED = {ARCHIVE, MANIFEST, NOTES, SUMS}
 SHA = re.compile(r"^[0-9a-f]{40}$")
 MARKER = re.compile(r"<!-- videosdk-meet-gitlab-release-v1 project=(\d+) branch=([^ ]+) sha=([0-9a-f]{40}) -->")
+INITIAL_TAG = "v1.0.0"
+INITIAL_NAME = "Initial release"
+INITIAL_NOTES = "release-notes/initial.md"
+INTERNAL_BRAND = re.compile("co" + "dex", re.I)
 
 
 class ReleaseError(Exception):
@@ -167,6 +171,29 @@ def marker(project, branch, sha):
     return f"<!-- {MANAGED} project={project} branch={quote(branch, safe='')} sha={sha} -->"
 
 
+def public_text(value):
+    return INTERNAL_BRAND.sub("automation", str(value))
+
+
+def public_title(value):
+    text = str(value).strip().replace("\n", " ").replace("\r", " ")
+    return "Merge request changes" if re.match(r"^merge\b", text, re.I) else public_text(text)
+
+
+def public_url(value):
+    value = str(value)
+    # Removing a path fragment would silently create a broken hyperlink.
+    return "" if INTERNAL_BRAND.search(unquote(value)) else value
+
+
+def initial_notes(git, current):
+    # Read the reviewed, versioned document from the immutable pipeline commit.
+    text = git.run("show", f"{current}:{INITIAL_NOTES}").stdout.strip()
+    if not text:
+        raise ReleaseError("The versioned initial release notes document is empty")
+    return public_text(text) + "\n"
+
+
 def artifact_record(path):
     return {"name": Path(path).name, "size": Path(path).stat().st_size, "sha256": file_digest(path)}
 
@@ -192,7 +219,15 @@ def validate_checkpoint(manifest_bytes, sums_bytes, assets, project, branch, tag
             raise ValueError()
         if str(source["project_id"]) != str(project) or source["branch"] != branch:
             raise ValueError()
-        if not SHA.fullmatch(source["sha"]) or tag != "meet-" + source["sha"]:
+        if not SHA.fullmatch(source["sha"]):
+            raise ValueError()
+        identity = manifest.get("release")
+        if tag == INITIAL_TAG:
+            if identity != {"tag": INITIAL_TAG, "name": INITIAL_NAME} or source.get("previous_sha") is not None:
+                raise ValueError()
+        elif tag != "meet-" + source["sha"]:
+            raise ValueError()
+        elif identity is not None and (not isinstance(identity, dict) or identity.get("tag") != tag):
             raise ValueError()
         records = {v["name"]: v for v in manifest["artifacts"]}
         by_name = {v["name"]: v for v in assets}
@@ -247,23 +282,26 @@ def notes(git, gitlab, project, project_url, previous, current):
         (m["project_id"], m["iid"]) in keys for m in associations[sha]
     )]
     def title(sha):
-        return git.run("show", "-s", "--format=%s", sha).stdout.strip().replace("\n", " ")
+        return public_title(git.run("show", "-s", "--format=%s", sha).stdout)
     def escape(text):
-        return re.sub(r"([\\`*_[\]<>])", r"\\\1", str(text)).replace("\n", " ").replace("\r", " ")
+        return re.sub(r"([\\`*_[\]<>])", r"\\\1", public_text(text)).replace("\n", " ").replace("\r", " ")
+    def link(label, url):
+        target = public_url(url)
+        return f"[{label}]({target})" if target else label
     lines = ["# WebRTC 2.0 signaling server", "", f"Source: `{current}`", "",
              f"Previous release: `{previous}`" if previous else "Initial release: all available GitLab history.", "",
              "## Merged requests", ""]
-    lines.extend(f"- [!{m['iid']}]({m['web_url']}) {escape(m['title'])}" for m in merged)
+    lines.extend(f"- {link('!' + str(m['iid']), m['web_url'])} {escape(public_title(m['title']))}" for m in merged)
     if not merged:
         lines.append("No merged requests in this commit range.")
     lines.extend(["", "## Direct commits", ""])
-    lines.extend(f"- [{sha[:12]}]({project_url}/-/commit/{sha}) {escape(title(sha))}" for sha in direct)
+    lines.extend(f"- {link(sha[:12], project_url + '/-/commit/' + sha)} {escape(title(sha))}" for sha in direct)
     if not direct:
         lines.append("No additional direct commits.")
     lines.extend(["", "## Complete commit list", ""])
-    lines.extend(f"- [{sha[:12]}]({project_url}/-/commit/{sha}) {escape(title(sha))}" for sha in commits)
-    return "\n".join(lines) + "\n", {"commits": commits, "merge_requests": [
-        {"project_id": m["project_id"], "iid": m["iid"], "title": m["title"], "url": m["web_url"]} for m in merged
+    lines.extend(f"- {link(sha[:12], project_url + '/-/commit/' + sha)} {escape(title(sha))}" for sha in commits)
+    return public_text("\n".join(lines)) + "\n", {"commits": commits, "merge_requests": [
+        {"project_id": m["project_id"], "iid": m["iid"], "title": public_title(m["title"]), "url": public_url(m["web_url"])} for m in merged
     ], "direct_commits": direct}
 
 
@@ -377,7 +415,7 @@ class Release:
             release = matches[0]
             self.verify_draft(release)
             return release
-        payload = {"tag_name": self.tag, "target_commitish": self.sha, "name": "WebRTC 2.0 " + self.sha[:12],
+        payload = {"tag_name": self.tag, "target_commitish": self.sha, "name": self.release_name(),
                    "body": marker(self.project, self.branch, self.sha), "draft": True, "prerelease": False}
         try:
             release = self.github.request("POST", f"{self.prefix}/releases", payload)[1]
@@ -387,6 +425,9 @@ class Release:
             raise ReleaseError("Draft creation did not complete cleanly; retry safely to reconcile") from None
         self.verify_draft(release)
         return release
+
+    def release_name(self):
+        return INITIAL_NAME if self.tag == INITIAL_TAG else "WebRTC 2.0 " + self.sha[:12]
 
     def verify_draft(self, release, expected_id=None):
         if (not isinstance(release, dict) or not release.get("id")
@@ -515,6 +556,7 @@ class Release:
         if outcome != "build":
             print(f"Release recheck: {outcome}; nothing to publish")
             return
+        self.tag = INITIAL_TAG if previous is None else "meet-" + self.sha
         # All source operations run at the immutable pipeline SHA, never the
         # moving branch tip. The runner checkout must be pristine.
         if self.git.run("rev-parse", "HEAD").stdout.strip() != self.sha:
@@ -524,13 +566,16 @@ class Release:
         with tempfile.TemporaryDirectory(prefix="meet-release-") as temp:
             directory = Path(temp)
             note_text, changes = notes(self.git, self.gitlab, self.project, self.env["CI_PROJECT_URL"], previous, self.sha)
-            (directory / NOTES).write_text(note_text, encoding="utf-8")
+            if previous is None:
+                note_text = initial_notes(self.git, self.sha)
+            (directory / NOTES).write_bytes(note_text.encode("utf-8"))
             image = "videosdk-meet:" + self.sha
             if not self.restore_ghcr(image, directory):
                 epoch = self.git.run("show", "-s", "--format=%ct", self.sha).stdout.strip()
                 if not epoch.isdigit():
                     raise ReleaseError("Invalid commit timestamp for SOURCE_DATE_EPOCH")
-                self.command(["docker", "build", "--platform", "linux/amd64", "--build-arg", "VERSION=meet-" + self.sha[:12],
+                version = INITIAL_TAG if previous is None else "meet-" + self.sha[:12]
+                self.command(["docker", "build", "--platform", "linux/amd64", "--build-arg", "VERSION=" + version,
                               "--build-arg", "VCS_REF=" + self.sha, "--build-arg", "SOURCE_DATE_EPOCH=" + epoch,
                               "--tag", image, "."])
             # Container smoke tests are a release gate, supplied by this repo.
@@ -542,6 +587,7 @@ class Release:
             registry_image = self.publish_ghcr(image, metadata["Id"], directory)
             self.save_image(image, directory / ARCHIVE)
             manifest = {"schema": 1, "managed_by": MANAGED,
+                        "release": {"tag": self.tag, "name": self.release_name()},
                         "source": {"project_id": int(self.project), "branch": self.branch, "sha": self.sha, "previous_sha": previous},
                         "image": {"name": image, "id": metadata["Id"], "platform": "linux/amd64"},
                         "changes": changes, "artifacts": [artifact_record(directory / n) for n in (ARCHIVE, NOTES)]}
@@ -564,7 +610,7 @@ class Release:
             # tag_name (also guarded in GitHub CLI's release edit command).
             # Send all identity/state fields with the notes in ONE final call;
             # a metadata-only PATCH must never detach or publish the draft.
-            publication = {"tag_name": self.tag, "target_commitish": self.sha,
+            publication = {"tag_name": self.tag, "target_commitish": self.sha, "name": self.release_name(),
                            "body": body, "draft": False, "prerelease": False, "make_latest": "true"}
             try:
                 self.github.request("PATCH", f"{self.prefix}/releases/{release['id']}", publication)

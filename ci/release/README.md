@@ -57,10 +57,16 @@ configuration. Long-lived credentials are not embedded in the image or release.
    `VERSION=meet-<12-character SHA>`, `VCS_REF=<full SHA>` and
    `SOURCE_DATE_EPOCH=<Git commit timestamp>`, and runs
    `python3 tests/container/smoke.py --image videosdk-meet:<full SHA>`.
+   With no published checkpoint, the first release uses tag/version `v1.0.0`,
+   title **Initial release**, and the reviewed `release-notes/initial.md` from
+   that Git commit. Its notes compare the application with the original version;
+   raw commit history is not appended. Later releases keep the source-SHA tag
+   and collect merged requests and commits since the previous release.
 5. Docker save output is streamed into `docker-image-linux-amd64.tar.gz`.
    The job prepares the four assets below and their checksums. Each asset must
    be under GitHub's 2 GiB limit; oversized output fails before GitHub mutation.
-6. An atomic, ordinary Git push copies only `main` and `meet-<full SHA>`. It
+6. An atomic, ordinary Git push copies only `main` and the selected release tag
+   (`v1.0.0` initially, then `meet-<full SHA>`). It
    never force-pushes, prunes refs, mirrors unrelated branches, or changes an
    existing different tag. Diverged GitHub history fails visibly.
 7. The job creates or resumes its own draft. Matching uploaded assets are
@@ -88,8 +94,8 @@ Enabling GitHub immutable releases is compatible with this draft-first flow.
 | Asset | Contents |
 | --- | --- |
 | `docker-image-linux-amd64.tar.gz` | Docker save archive of `videosdk-meet:<full SHA>`; load with `gzip -dc ... | docker load`. |
-| `release-notes.md` | Complete merged-request, direct-commit and full-commit lists. |
-| `release-manifest.json` | Schema/version, managed owner marker, source SHA/previous SHA/project/branch, image ID/platform, change metadata, archive/notes sizes and SHA256 hashes; optional GHCR digest. |
+| `release-notes.md` | Reviewed comparison for the initial release; merged-request and commit notes for later releases. |
+| `release-manifest.json` | Schema/version, managed owner marker, release tag/title, source SHA/previous SHA/project/branch, image ID/platform, change metadata, archive/notes sizes and SHA256 hashes; optional GHCR digest. |
 | `SHA256SUMS` | SHA256 hashes for the archive, notes and manifest. |
 
 Verify downloads with `sha256sum -c SHA256SUMS`. GitHub's asset SHA256 digest
@@ -111,12 +117,21 @@ GHCR packages are private by default; package visibility is managed separately.
 
 `GIT_DEPTH=0` preserves complete ancestry. Notes use all parents in
 `previous-successful-release..pipeline-SHA`, not commit timestamps or the
-previous pipeline's SHA. The initial release includes all available GitLab
-history. Commit-to-MR associations and merged MR metadata are fully paginated;
+previous pipeline's SHA. Initial notes come only from the versioned comparison
+document; structured change metadata still records available GitLab provenance.
+Commit-to-MR associations and merged MR metadata are fully paginated;
 merge/squash/head integration SHAs must be present in the actual commit range.
 MRs are deduplicated by project/IID. A complete commit list also preserves
-changes without MR metadata, including the initial sanitized import. Historical
-Bitbucket PR titles and links require a separate metadata import.
+changes without MR metadata in subsequent releases. Generated text and structured
+MR titles omit internal tool branding; merge subjects use a neutral description
+instead of historical branch names. Links containing disallowed branding are
+omitted rather than rewritten to nonexistent URLs. Historical Bitbucket PR
+titles and links require a separate metadata import.
+
+Checkpoint validation accepts `v1.0.0` only with its explicit initial-release
+manifest identity and no previous source SHA. Existing source-SHA checkpoints
+remain compatible; arbitrary tags are rejected. All tags must still resolve to
+the verified source commit.
 
 Run offline tests with:
 
@@ -129,7 +144,9 @@ cover unchanged and obsolete pipelines, divergent/missing ancestry, old side
 branches, pagination, merge/squash/fast-forward records, direct commits,
 checksums/tag tampering, owned draft repair, safe Git push arguments, failures
 at each publication phase, and lost publication responses. They do not publish
-to GitHub. The container smoke suite is a separate mandatory release gate.
+to GitHub. Tests also verify the initial identity/document, transition to later
+source-SHA releases, removal of internal branding, and strict tag validation.
+The container smoke suite is a separate mandatory release gate.
 
 ## Official references
 
