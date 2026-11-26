@@ -14,6 +14,7 @@ services:
       PORT: "8080"
       TLS_PORT: "8443"
       SDK_SIGNALING_URL: ${SDK_SIGNALING_URL:-}
+      TURN_SERVERS: ${TURN_SERVERS:-}
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=32m,mode=1777

@@ -10,6 +10,7 @@ const readline = require('node:readline');
 const { spawn } = require('node:child_process');
 const httpProxy = require('http-proxy');
 const { io } = require('socket.io-client');
+const { createTurnConfig } = require('./turn-config.cjs');
 
 const app = path.resolve(__dirname, '..');
 const web = path.join(app, 'web');
@@ -20,6 +21,7 @@ const children = new Map();
 const servers = [];
 const probes = new Set();
 const sensitive = [crypto.randomBytes(24).toString('hex'), crypto.randomBytes(32).toString('hex')];
+let turnConfig = createTurnConfig();
 let configRoot;
 let stopping = false;
 let ready = false;
@@ -36,6 +38,7 @@ function readPort(name, fallback) {
 }
 function safeError(error) {
   let message = error && error.message ? error.message : String(error);
+  message = turnConfig.redact(message);
   for (const secret of sensitive) message = message.split(secret).join('[redacted]');
   return message.replace(/((?:password|credential|token|vt_auth_user|vt_auth_pass)\s*[:=]\s*)[^,\s}]+/gi, '$1[redacted]');
 }
@@ -100,7 +103,9 @@ async function listen(server, listenPort) {
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(listenPort, '0.0.0.0', resolve); });
 }
 function startChild(name, script, cwd, configEnvironment) {
-  const child = spawn(process.execPath, [path.join(__dirname, script)], { cwd, env: { ...process.env, NODE_ENV: 'production', ...configEnvironment }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const environment = { ...process.env, NODE_ENV: 'production', ...configEnvironment };
+  delete environment.TURN_SERVERS;
+  const child = spawn(process.execPath, [path.join(__dirname, script)], { cwd, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
   children.set(name, child);
   // Legacy signaling logs include private handshake data. Only explicit debug mode forwards redacted lines.
   for (const stream of [child.stdout, child.stderr]) {
@@ -168,6 +173,7 @@ process.on('uncaughtException', error => { console.error('[webrtc20] Runtime fai
 process.on('unhandledRejection', error => { console.error('[webrtc20] Runtime failed: ' + safeError(error)); shutdown(1); });
 
 (async () => {
+  turnConfig = createTurnConfig(process.env.TURN_SERVERS);
   const cert = process.env.TLS_CERT_FILE;
   const key = process.env.TLS_KEY_FILE;
   if (Boolean(cert) !== Boolean(key)) throw new Error('Set both TLS_CERT_FILE and TLS_KEY_FILE for direct TLS');
@@ -181,7 +187,7 @@ process.on('unhandledRejection', error => { console.error('[webrtc20] Runtime fa
   const authConfig = path.join(configRoot, 'auth');
   await fsp.mkdir(signalConfig, { mode: 0o700 });
   await fsp.mkdir(authConfig, { mode: 0o700 });
-  await fsp.writeFile(path.join(signalConfig, 'production.json'), JSON.stringify({ isDev: false, server: { port: signalingPort, secure: false, pingTimeout: 10000, pingInterval: 4800, loglevel: 0 }, metadata: { special_rooms: { gateways: { name: 'VTGateways', role: 'gateway' }, auth: { name: 'Auth', role: 'auth' } } }, auth: { vt_auth_user: sensitive[0], vt_auth_pass: sensitive[1] } }), { mode: 0o600 });
+  await fsp.writeFile(path.join(signalConfig, 'production.json'), JSON.stringify({ isDev: false, server: { port: signalingPort, secure: false, pingTimeout: 10000, pingInterval: 4800, loglevel: 0 }, metadata: { ...turnConfig.metadata, special_rooms: { gateways: { name: 'VTGateways', role: 'gateway' }, auth: { name: 'Auth', role: 'auth' } } }, auth: { vt_auth_user: sensitive[0], vt_auth_pass: sensitive[1] } }), { mode: 0o600 });
   await fsp.writeFile(path.join(authConfig, 'default.json'), JSON.stringify({ auth: { login: sensitive[0], password: sensitive[1] }, signaling: { serverUrl: `http://127.0.0.1:${signalingPort}` } }), { mode: 0o600 });
   startChild('signaling', 'signaling-child.cjs', path.join(app, 'signaling'), { GETCONFIG_ROOT: signalConfig, PORT: String(signalingPort) });
   await waitForSignaling();

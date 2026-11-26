@@ -175,8 +175,43 @@ Set these values in the project's `.env` file as needed:
 | `WEBRTC_TLS_PORT` | `8443` | Host HTTPS port when using the TLS configuration |
 | `SDK_SIGNALING_URL` | Page's HTTPS origin | Different public HTTPS origin for C# receiver links, if needed |
 | `TLS_CERT_FILE`, `TLS_KEY_FILE` | Unset | Host paths used by the optional TLS configuration |
+| `TURN_SERVERS` | Unset | TURN defaults advertised to browser and native receivers; see [TURN relay configuration](#turn-relay-configuration) |
 
-The bundled authorization service provides sample access rules. Adapt it to your application's authentication requirements for a customer-facing deployment. The image contains signaling, web pages, and sample authorization; networks that require media relay may also need a separate TURN service and matching browser/SDK ICE configuration.
+The bundled authorization service provides sample access rules. Adapt it to your application's authentication requirements for a customer-facing deployment.
+
+## TURN relay configuration
+
+A TURN relay can carry media when the peers cannot connect directly, for example across restrictive firewalls or NAT. Run a separate TURN service, such as Coturn, and configure its public hostname, relay credentials, listening port, and media relay port range. Allow those ports through the relay host's firewall and configure its public address correctly if it is behind NAT. This signaling image advertises the relay settings to clients; it does not start a TURN service.
+
+In the signaling project's `.env` file, add an entry using credentials configured on your TURN service:
+
+```dotenv
+TURN_SERVERS='turn_user@replace_with_turn_password:turn.example.com:3478'
+```
+
+The format is `username@password:hostname:port`. Use an ASCII DNS hostname or IPv4 address and an explicit port from 1 to 65535. This shared setting describes the usual UDP TURN endpoint; browser and native clients construct `turn:hostname:port` from it. URI prefixes, IPv6 addresses, transport queries, and `turns:` endpoints are not supported by this setting. Usernames and passwords must contain printable ASCII characters without whitespace or any of `: @ ; / \ ? #`. Dedicated credentials using letters, digits, `-`, `_`, `+`, and `=` fit the format and the single-quoted `.env` examples without additional escaping.
+
+For multiple relays, separate complete entries with semicolons:
+
+```dotenv
+TURN_SERVERS='turn_user@replace_with_turn_password:turn.example.com:3478;backup_user@replace_with_backup_password:backup.example.com:3478'
+```
+
+Apply the change from the source directory:
+
+```sh
+docker compose up -d
+```
+
+For the direct-TLS setup, use `docker compose -f compose.yaml -f docker/compose.tls.yaml up -d`. Reload browser pages and reconnect the C# samples so new peer connections receive the updated settings. An empty or unset `TURN_SERVERS` keeps the existing behavior. Invalid entries stop container startup with a configuration error.
+
+### Browser and C# clients
+
+The signaling server sends these defaults as `server_metadata.turn_server` during connection setup. Browser pages use them for ICE, and WebRTC 2.0 native clients use them when an explicit application or peer setting has not supplied a TURN server. The same server configuration therefore covers a browser publisher, browser viewers, Web Guests, and compatible C# receivers. Direct connections remain available; configuring a relay does not force every connection through it.
+
+Explicit native `turn_server` settings take precedence over the signaling default. For `MConnect`, the configuration order is the object's `turn_server`, a peer-provided `turn_server`, then the signaling default. Registry defaults for `MConnect` are read from `HKEY_CURRENT_USER\Software\Medialooks\MConnect`. Applications using the `MWebRTC` compatibility API with WebRTC 2.0 enabled read `HKEY_CURRENT_USER\Software\Medialooks\WebRTC` instead. Check the properties and registry path used by your application's API when an older override appears to hide a server change.
+
+TURN usernames and passwords are sent to connected clients so they can authenticate to the relay. Use dedicated relay credentials and keep `.env` out of source control. For TURN-service deployment and SDK details, see [TURN Server Configuration for WebRTC 2.0](https://support.medialooks.com/hc/en-us/articles/27182486346386-TURN-Server-Configuration-for-WebRTC-2-0).
 
 ## Everyday operation
 
